@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interfone Escolar</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --green: #00AE42;
+        --red: #E5484D;
+        --yellow: #F59E0B;
+        --bg-dark: #0F1419;
+        --text: #FFFFFF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-dark);
+        color: var(--text);
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.3s ease;
+    }
+
+    /* =========================================
+       TELA DO PORTEIRO
+       ========================================= */
+    #view-receptionist {
+        width: 100%;
+        max-width: 450px;
+        padding: 20px;
+        text-align: center;
+    }
+    .header { margin-bottom: 30px; }
+    .header h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+    .header p { color: #888; font-size: 15px; }
+    
+    /* Switch de Urgente (Customizado) */
+    .urgent-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background-color: #1A1F26;
+        padding: 16px 20px;
+        border-radius: 12px;
+        border: 1px solid #333;
+        margin-bottom: 30px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+    .urgent-toggle:hover { border-color: #555; }
+    .urgent-toggle.active { border-color: var(--red); background-color: rgba(229, 72, 77, 0.1); }
+    .urgent-label { font-weight: 600; font-size: 16px; color: #ccc; transition: 0.2s; }
+    .urgent-toggle.active .urgent-label { color: var(--red); }
+    
+    /* O botão do switch */
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 28px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #333;
+        transition: .4s;
+        border-radius: 34px;
+    }
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 20px; width: 20px;
+        left: 4px; bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    input:checked + .slider { background-color: var(--red); }
+    input:checked + .slider:before { transform: translateX(22px); }
+
+    .btn-alert {
+        width: 100%;
+        padding: 30px;
+        border-radius: 20px;
+        border: none;
+        font-size: 22px;
+        font-weight: 800;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        transition: transform 0.1s;
+        margin-bottom: 20px;
+        color: white;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .btn-alert:active { transform: scale(0.95); }
+    .btn-alert svg { width: 48px; height: 48px; }
+    
+    .btn-danger { background-color: var(--red); }
+    .btn-success { background-color: var(--green); }
+
+    /* =========================================
+       TELA DA TV (#tv)
+       ========================================= */
+    #view-tv {
+        display: none;
+        width: 100%;
+        height: 100%;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 40px;
+    }
+    
+    .tv-status {
+        font-size: 12vw;
+        font-weight: 900;
+        line-height: 1;
+        margin-bottom: 20px;
+        text-transform: uppercase;
+        letter-spacing: -2px;
+    }
+    .tv-subtitle {
+        font-size: 4vw;
+        font-weight: 600;
+        color: rgba(255,255,255,0.8);
+        margin-bottom: 40px;
+    }
+    
+    /* Animação de pulso */
+    .pulse-red { animation: pulse-red 1s infinite; }
+    @keyframes pulse-red {
+        0% { transform: scale(1); text-shadow: 0 0 0px rgba(255,255,255,0); }
+        50% { transform: scale(1.05); text-shadow: 0 0 40px rgba(255,255,255,0.8); }
+        100% { transform: scale(1); text-shadow: 0 0 0px rgba(255,255,255,0); }
+    }
+
+    .bg-free { background-color: var(--green); color: white; }
+    .bg-busy { background-color: var(--red); color: white; }
+    .bg-warning { background-color: var(--yellow); color: white; }
+
+    .tv-action-hint {
+        font-size: 2vw;
+        color: rgba(255,255,255,0.6);
+        position: absolute;
+        bottom: 40px;
+        animation: blink 2s infinite;
+    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .hidden-nav { position: absolute; top: 20px; left: 20px; opacity: 0.1; text-decoration: none; color: #fff; font-size: 12px; }
+
+</style>
+</head>
+<body>
+
+    <!-- ========================================== -->
+    <!-- TELA 1: PORTEIRO                           -->
+    <!-- ========================================== -->
+    <div id="view-receptionist">
+        <div class="header">
+            <h1>Interfone da Sala</h1>
+            <p>Status atual: <strong id="status-text-phone" style="color: var(--green);">Livre</strong></p>
+        </div>
+
+        <!-- Botão de Urgente -->
+        <label class="urgent-toggle" id="urgent-toggle-label">
+            <span class="urgent-label">Marcar como Urgente</span>
+            <div class="switch">
+                <input type="checkbox" id="urgent-check" onchange="toggleUrgentStyle()">
+                <span class="slider"></span>
+            </div>
+        </label>
+
+        <button class="btn-alert btn-danger" onclick="avisarTV(true)">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+            Tem Alguém na Porta
+        </button>
+
+        <button class="btn-alert btn-success" onclick="avisarTV(false)">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+            Porta Livre (Ninguém)
+        </button>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TELA 2: TV                                 -->
+    <!-- ========================================== -->
+    <div id="view-tv">
+        <a href="#" class="hidden-nav">Sair da TV</a>
+        <div class="tv-status" id="tv-main-text">LIVRE</div>
+        <div class="tv-subtitle" id="tv-sub-text">Pode continuar a apresentação</div>
+        <div class="tv-action-hint" id="tv-hint">Aguardando atualização...</div>
+    </div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // ⚠️ COLE AQUI AS SUAS CONFIGURAÇÕES DO FIREBASE ⚠️
+    const firebaseConfig = {
+        apiKey: "AIzaSyCYbtviQhNFA-h5REyIRNeoXr5LKGBzUKA",
+        authDomain: "printlab-3d-15611.firebaseapp.com",
+        projectId: "printlab-3d-15611",
+        storageBucket: "printlab-3d-15611.firebasestorage.app",
+        messagingSenderId: "54439366409",
+        appId: "1:54439366409:web:4446f135e89365c3160dd8"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const statusDocRef = doc(db, 'controle_sala', 'status_porta');
+
+    const isTVMode = window.location.hash === '#tv';
+
+    const viewReceptionist = document.getElementById('view-receptionist');
+    const viewTV = document.getElementById('view-tv');
+    const statusTextPhone = document.getElementById('status-text-phone');
+    const urgentCheck = document.getElementById('urgent-check');
+    const urgentToggleLabel = document.getElementById('urgent-toggle-label');
+
+    let audioCtx = null;
+    let currentStatus = 'livre';
+
+    // Inicializa a tela correta
+    if (isTVMode) {
+        viewReceptionist.style.display = 'none';
+        viewTV.style.display = 'flex';
+        document.body.className = 'bg-free'; 
+        document.body.addEventListener('click', () => {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }, { once: true });
+    } else {
+        viewReceptionist.style.display = 'block';
+        viewTV.style.display = 'none';
+    }
+
+    // Muda a cor da caixa de Urgente quando clicado
+    window.toggleUrgentStyle = function() {
+        if(urgentCheck.checked) {
+            urgentToggleLabel.classList.add('active');
+        } else {
+            urgentToggleLabel.classList.remove('active');
+        }
+    };
+
+    // ==========================================
+    // LÓGICA DO PORTEIRO
+    // ==========================================
+    window.avisarTV = async function(temAlguem) {
+        const isUrgente = urgentCheck.checked;
+        try {
+            await setDoc(statusDocRef, {
+                ocupado: temAlguem,
+                urgente: isUrgente,
+                atualizadoEm: new Date().toISOString()
+            });
+            
+            if (temAlguem) {
+                statusTextPhone.textContent = isUrgente ? "Aviso Urgente Enviado!" : "Aviso Enviado!";
+                statusTextPhone.style.color = "var(--red)";
+            } else {
+                statusTextPhone.textContent = "Livre";
+                statusTextPhone.style.color = "var(--green)";
+                urgentCheck.checked = false; // Desmarca o urgente quando liberar
+                toggleUrgentStyle();
+            }
+        } catch (e) {
+            console.error("Erro ao enviar:", e);
+            alert("Erro ao conectar.");
+        }
+    };
+
+    // ==========================================
+    // LÓGICA DA TV
+    // ==========================================
+    function tocarAlerta(isUrgente) {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        osc.type = isUrgente ? 'square' : 'sine'; // Som mais agudo/irritante se for urgente
+        osc.frequency.setValueAtTime(isUrgente ? 1046.50 : 880, audioCtx.currentTime); // C6 ou A5
+        osc.frequency.setValueAtTime(isUrgente ? 1046.50 : 659.25, audioCtx.currentTime + 0.2); 
+
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.8);
+    }
+
+    if (isTVMode) {
+        onSnapshot(statusDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const temAlguem = data.ocupado;
+                const isUrgente = data.urgente;
+                const mainText = document.getElementById('tv-main-text');
+
+                if (temAlguem && currentStatus !== 'ocupado') {
+                    currentStatus = 'ocupado';
+                    
+                    if (isUrgente) {
+                        document.body.className = 'bg-busy';
+                        mainText.textContent = 'URGENTE!';
+                        mainText.classList.add('pulse-red');
+                        document.getElementById('tv-sub-text').textContent = 'Alguém precisa de atenção imediata';
+                        document.getElementById('tv-hint').textContent = 'Por favor, verifiquem a porta agora!';
+                    } else {
+                        document.body.className = 'bg-warning'; // Amarelo para aviso normal
+                        mainText.textContent = 'ATENÇÃO';
+                        mainText.classList.add('pulse-red');
+                        document.getElementById('tv-sub-text').textContent = 'Tem alguém na porta';
+                        document.getElementById('tv-hint').textContent = 'Alguém pode verificar?';
+                    }
+                    
+                    tocarAlerta(isUrgente);
+                    setTimeout(() => { if (currentStatus === 'ocupado') tocarAlerta(isUrgente); }, 3000);
+                    setTimeout(() => { if (currentStatus === 'ocupado') tocarAlerta(isUrgente); }, 6000);
+
+                } else if (!temAlguem && currentStatus !== 'livre') {
+                    currentStatus = 'livre';
+                    document.body.className = 'bg-free';
+                    mainText.textContent = 'LIVRE';
+                    mainText.classList.remove('pulse-red');
+                    document.getElementById('tv-sub-text').textContent = 'Pode continuar a apresentação';
+                    document.getElementById('tv-hint').textContent = 'Status atualizado';
+                }
+            } else {
+                setDoc(statusDocRef, { ocupado: false, urgente: false });
+            }
+        });
+    }
+</script>
+</body>
+</html>
